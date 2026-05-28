@@ -14,20 +14,8 @@ Public Sub Generate_BlankRegistration()
     '-- Sheets --
     Dim wsMadrasa  As Worksheet
     Dim wsSettings As Worksheet
-    
+
     On Error GoTo ErrorHandler
-
-    If Not SheetExists("Madrasa_List") Then
-        MsgBox "Sheet 'Madrasa_List' not found!", vbCritical, "Error"
-        Call PerfOff
-        Exit Sub
-    End If
-
-    If Not SheetExists("Settings") Then
-        MsgBox "Sheet 'Settings' not found!", vbCritical, "Error"
-        Call PerfOff
-        Exit Sub
-    End If
 
     Set wsMadrasa = ThisWorkbook.Sheets("Madrasa_List")
     Set wsSettings = ThisWorkbook.Sheets("Settings")
@@ -43,9 +31,9 @@ Public Sub Generate_BlankRegistration()
         Exit Sub
     End If
 
-    '-- Madrasa List - Better lastRow detection --
+    '-- Madrasa List --
     Dim lastRow As Long
-    lastRow = GetLastRow(wsMadrasa, 1)
+    lastRow = wsMadrasa.Cells(Rows.Count, 1).End(xlUp).Row
 
     If lastRow < 2 Then
         MsgBox "No madrasa found in Madrasa_List!", _
@@ -62,12 +50,12 @@ Public Sub Generate_BlankRegistration()
     Dim examYearHij As String
     Dim examFee     As String
 
-    boardName = SafeGetValue(wsSettings.Range("B10"))
-    examName = SafeGetValue(wsSettings.Range("B4"))
-    examYearEng = SafeGetValue(wsSettings.Range("B5"))
-    examYearBan = SafeGetValue(wsSettings.Range("B6"))
-    examYearHij = SafeGetValue(wsSettings.Range("B7"))
-    examFee = SafeGetValue(wsSettings.Range("B16")) & " " & txtFeeUnit()
+    boardName = wsSettings.Range("B10").Value
+    examName = wsSettings.Range("B4").Value
+    examYearEng = wsSettings.Range("B5").Value
+    examYearBan = wsSettings.Range("B6").Value
+    examYearHij = wsSettings.Range("B7").Value
+    examFee = wsSettings.Range("B16").Value & " " & GetFeeUnit()
 
     '-- Loop Start --
     Dim i            As Long
@@ -86,14 +74,14 @@ Public Sub Generate_BlankRegistration()
         Dim mDistrict As String
         Dim mPhone    As String
 
-        mCode = Trim(SafeGetValue(wsMadrasa.Cells(i, 1)))
-        mName = Trim(SafeGetValue(wsMadrasa.Cells(i, 2)))
-        mZone = Trim(SafeGetValue(wsMadrasa.Cells(i, 3)))
-        mVillage = Trim(SafeGetValue(wsMadrasa.Cells(i, 4)))
-        mUnion = Trim(SafeGetValue(wsMadrasa.Cells(i, 5)))
-        mThana = Trim(SafeGetValue(wsMadrasa.Cells(i, 6)))
-        mDistrict = Trim(SafeGetValue(wsMadrasa.Cells(i, 7)))
-        mPhone = Trim(SafeGetValue(wsMadrasa.Cells(i, 8)))
+        mCode = Trim(wsMadrasa.Cells(i, 1).Value)
+        mName = Trim(wsMadrasa.Cells(i, 2).Value)
+        mZone = Trim(wsMadrasa.Cells(i, 3).Value)
+        mVillage = Trim(wsMadrasa.Cells(i, 4).Value)
+        mUnion = Trim(wsMadrasa.Cells(i, 5).Value)
+        mThana = Trim(wsMadrasa.Cells(i, 6).Value)
+        mDistrict = Trim(wsMadrasa.Cells(i, 7).Value)
+        mPhone = Trim(wsMadrasa.Cells(i, 8).Value)
 
         '-- Skip if Empty --
         If mCode = "" Or mName = "" Then GoTo NextMadrasa
@@ -105,10 +93,7 @@ Public Sub Generate_BlankRegistration()
         '-- Registration Sheet Design --
         Dim wsReg As Worksheet
         Set wsReg = newWB.Sheets(1)
-        
-        On Error Resume Next
         wsReg.Name = txtRegForm()
-        On Error GoTo ErrorHandler
 
         '-- Design the Sheet --
         Call DesignRegSheet( _
@@ -121,14 +106,17 @@ Public Sub Generate_BlankRegistration()
 
         '-- Save File --
         Dim savePath As String
-        Dim cleanName As String
-        cleanName = CleanFileName(mName)
-        savePath = folderPath & mCode & "_" & cleanName & "_Registration.xlsx"
+        savePath = folderPath & mCode & "_" & _
+                   CleanFileName(mName) & "_Registration.xlsx"
 
-        '-- Save with error handling --
-        If SaveWorkbook(newWB, savePath) Then
+        On Error Resume Next
+        newWB.SaveAs savePath, xlOpenXMLWorkbook
+        If Err.Number = 0 Then
             successCount = successCount + 1
+        Else
+            MsgBox "Error saving: " & mName & vbCrLf & Err.Description, vbExclamation
         End If
+        On Error GoTo ErrorHandler
 
         newWB.Close False
 
@@ -139,9 +127,9 @@ NextMadrasa:
     Call PerfOff
 
     '-- Open Folder --
-    If OpenFolder(folderPath) Then
-        ' Folder opened successfully
-    End If
+    On Error Resume Next
+    Shell "explorer.exe " & folderPath, vbNormalFocus
+    On Error GoTo 0
 
     MsgBox txtRegForm() & " generation complete!" & vbCrLf & _
            "Total: " & successCount & " forms created." & vbCrLf & _
@@ -151,7 +139,7 @@ NextMadrasa:
     Exit Sub
 ErrorHandler:
     Call PerfOff
-    MsgBox "Error: " & Err.Description, vbCritical, "Error"
+    MsgBox "Error: " & Err.Description, vbCritical, "Error in Generate_BlankRegistration"
 End Sub
 
 '--------------------------------------------
@@ -210,9 +198,9 @@ Private Sub DesignRegSheet( _
 
         .Range("A2:M2").Merge
         .Range("A2").Value = examName & " " & _
-            examYearEng & " " & txtEngYear() & "/" & _
-            examYearBan & " " & txtBanYear() & "/" & _
-            examYearHij & " " & txtHijYear()
+            examYearEng & " " & GetEngYear() & "/" & _
+            examYearBan & " " & GetBanYear() & "/" & _
+            examYearHij & " " & GetHijYear()
         .Range("A2").Font.Size = 14
         .Range("A2").Font.Bold = True
         .Range("A2").HorizontalAlignment = xlCenter
@@ -232,8 +220,8 @@ Private Sub DesignRegSheet( _
         ' Row 5: Madrasa Name (Full Row)
         '----------------------------
         .Range("A5:M5").Merge
-        .Range("A5").Value = lblMadrasa() & " " & mName & _
-            "  |  " & lblCode() & " " & mCode
+        .Range("A5").Value = GetLblMadrasa() & " " & mName & _
+            "  |  " & GetLblCode() & " " & mCode
         .Range("A5").Font.Bold = True
         .Range("A5").Font.Size = 14
         .Range("A5").HorizontalAlignment = xlCenter
@@ -243,7 +231,7 @@ Private Sub DesignRegSheet( _
         '----------------------------
         ' Row 6: Village, Union, Thana, District
         '----------------------------
-        .Cells(6, 1).Value = lblVillage()
+        .Cells(6, 1).Value = GetLblVillage()
         .Cells(6, 1).Font.Bold = True
         .Cells(6, 1).HorizontalAlignment = xlCenter
 
@@ -251,7 +239,7 @@ Private Sub DesignRegSheet( _
         .Range("B6").Value = mVillage
         .Range("B6").HorizontalAlignment = xlCenter
 
-        .Cells(6, 4).Value = lblUnion()
+        .Cells(6, 4).Value = GetLblUnion()
         .Cells(6, 4).Font.Bold = True
         .Cells(6, 4).HorizontalAlignment = xlCenter
 
@@ -259,7 +247,7 @@ Private Sub DesignRegSheet( _
         .Range("E6").Value = mUnion
         .Range("E6").HorizontalAlignment = xlCenter
 
-        .Cells(6, 7).Value = lblThana()
+        .Cells(6, 7).Value = GetLblThana()
         .Cells(6, 7).Font.Bold = True
         .Cells(6, 7).HorizontalAlignment = xlCenter
 
@@ -267,7 +255,7 @@ Private Sub DesignRegSheet( _
         .Range("H6").Value = mThana
         .Range("H6").HorizontalAlignment = xlCenter
 
-        .Cells(6, 10).Value = lblDistrict()
+        .Cells(6, 10).Value = GetLblDistrict()
         .Cells(6, 10).Font.Bold = True
         .Cells(6, 10).HorizontalAlignment = xlCenter
 
@@ -298,7 +286,7 @@ Private Sub DesignRegSheet( _
         .Range("E7").Value = mZone
         .Range("E7").HorizontalAlignment = xlCenter
 
-        .Cells(7, 7).Value = lblPhone()
+        .Cells(7, 7).Value = GetLblPhone()
         .Cells(7, 7).Font.Bold = True
         .Cells(7, 7).HorizontalAlignment = xlCenter
 
@@ -306,7 +294,7 @@ Private Sub DesignRegSheet( _
         .Range("H7").Value = mPhone
         .Range("H7").HorizontalAlignment = xlCenter
 
-        .Cells(7, 10).Value = lblFee()
+        .Cells(7, 10).Value = GetLblFee()
         .Cells(7, 10).Font.Bold = True
         .Cells(7, 10).HorizontalAlignment = xlCenter
 
@@ -323,7 +311,7 @@ Private Sub DesignRegSheet( _
         ' Row 9: Table Header (NO COLOR)
         '----------------------------
         .Cells(9, 1).Value = hdrSerial()
-        .Cells(9, 2).Value = lblRegNo()
+        .Cells(9, 2).Value = GetLblRegNo()
 
         .Range("C9:D9").Merge
         .Range("C9").Value = hdrName()
@@ -331,13 +319,13 @@ Private Sub DesignRegSheet( _
         .Range("E9:F9").Merge
         .Range("E9").Value = hdrFather()
 
-        .Cells(9, 7).Value = lblDOB()
-        .Cells(9, 8).Value = lblVillage()
-        .Cells(9, 9).Value = lblPostOffice()
-        .Cells(9, 10).Value = lblThana()
-        .Cells(9, 11).Value = lblDistrict()
-        .Cells(9, 12).Value = lblFee()
-        .Cells(9, 13).Value = lblSignature()
+        .Cells(9, 7).Value = GetLblDOB()
+        .Cells(9, 8).Value = GetLblVillage()
+        .Cells(9, 9).Value = GetLblPostOffice()
+        .Cells(9, 10).Value = GetLblThana()
+        .Cells(9, 11).Value = GetLblDistrict()
+        .Cells(9, 12).Value = GetLblFee()
+        .Cells(9, 13).Value = GetLblSignature()
 
         '-- Header Format (Bold, Center, Border ONLY) --
         .Range("A9:M9").Font.Bold = True
@@ -379,7 +367,7 @@ Private Sub DesignRegSheet( _
         Dim footerRow As Long
         footerRow = 20  ' Right after last student
 
-        .Cells(footerRow, 13).Value = lblCollector()
+        .Cells(footerRow, 13).Value = GetLblCollector()
         .Cells(footerRow, 13).Font.Bold = True
         .Cells(footerRow, 13).HorizontalAlignment = xlRight
         .Cells(footerRow, 13).VerticalAlignment = xlCenter
@@ -405,223 +393,127 @@ Private Sub DesignRegSheet( _
 End Sub
 
 '--------------------------------------------
-' Get Label Text from VBA_Helper I Column
-'--------------------------------------------
-Private Function lblMadrasa() As String
-    lblMadrasa = ReadHelperI(2)
-End Function
-
-Private Function lblCode() As String
-    lblCode = ReadHelperI(3)
-End Function
-
-Private Function lblVillage() As String
-    lblVillage = ReadHelperI(4)
-End Function
-
-Private Function lblUnion() As String
-    lblUnion = ReadHelperI(5)
-End Function
-
-Private Function lblThana() As String
-    lblThana = ReadHelperI(6)
-End Function
-
-Private Function lblDistrict() As String
-    lblDistrict = ReadHelperI(7)
-End Function
-
-Private Function lblPhone() As String
-    lblPhone = ReadHelperI(8)
-End Function
-
-Private Function lblFee() As String
-    lblFee = ReadHelperI(9)
-End Function
-
-Private Function lblRegNo() As String
-    lblRegNo = ReadHelperI(10)
-End Function
-
-Private Function lblDOB() As String
-    lblDOB = ReadHelperI(11)
-End Function
-
-Private Function lblPostOffice() As String
-    lblPostOffice = ReadHelperI(12)
-End Function
-
-Private Function lblSignature() As String
-    lblSignature = ReadHelperI(13)
-End Function
-
-Private Function lblCollector() As String
-    lblCollector = ReadHelperI(14)
-End Function
-
-Private Function lblDate() As String
-    lblDate = ReadHelperI(15)
-End Function
-
-Private Function lblSealSign() As String
-    lblSealSign = ReadHelperI(16)
-End Function
-
-Private Function lblBoardUse() As String
-    lblBoardUse = ReadHelperI(17)
-End Function
-
-Private Function hdrSerial() As String
-    hdrSerial = ReadHelperI(22)
-End Function
-
-Private Function hdrName() As String
-    hdrName = ReadHelperI(23)
-End Function
-
-Private Function hdrFather() As String
-    hdrFather = ReadHelperI(24)
-End Function
-
-Private Function hdrJamat() As String
-    hdrJamat = ReadHelperI(25)
-End Function
-
-Private Function hdrZone() As String
-    hdrZone = ReadHelperI(26)
-End Function
-
-Private Function txtRegForm() As String
-    txtRegForm = ReadHelperI(27)
-End Function
-
-Private Function txtEngYear() As String
-    txtEngYear = ReadHelperI(18)
-End Function
-
-Private Function txtBanYear() As String
-    txtBanYear = ReadHelperI(19)
-End Function
-
-Private Function txtHijYear() As String
-    txtHijYear = ReadHelperI(20)
-End Function
-
-Private Function txtFeeUnit() As String
-    txtFeeUnit = ReadHelperI(21)
-End Function
-
-'--------------------------------------------
-' Improved Helper Functions
+' Helper Labels - নাম ভেবে যাবে এখান থেকে
+' VBA_Helper Sheet-এর মাধ্যমে
 '--------------------------------------------
 
-'-- Safe Helper I Column Reader with Error Handling --
-Private Function ReadHelperI(Row As Integer) As String
-    Dim wsHelper As Worksheet
-    Dim result As String
-    
-    On Error GoTo ErrorHandler
-    
-    If Not SheetExists("VBA_Helper") Then
-        ReadHelperI = ""
-        Exit Function
-    End If
-    
-    Set wsHelper = ThisWorkbook.Sheets("VBA_Helper")
-    result = Trim(wsHelper.Range("I" & Row).Value)
-    
-    If result = "" Then
-        result = ""  ' Return empty string if value is empty
-    End If
-    
-    ReadHelperI = result
-    Exit Function
-    
-ErrorHandler:
-    ReadHelperI = ""
-End Function
-
-'-- Clean File Name (Remove invalid characters) --
-Private Function CleanFileName(fileName As String) As String
-    Dim invalidChars As String
-    Dim i As Integer
-    Dim result As String
-    
-    invalidChars = "<>:/\|?*" & Chr(34)
-    result = fileName
-    
-    For i = 1 To Len(invalidChars)
-        result = Replace(result, Mid(invalidChars, i, 1), "_")
-    Next i
-    
-    ' Limit length
-    If Len(result) > 50 Then
-        result = Left(result, 50)
-    End If
-    
-    CleanFileName = result
-End Function
-
-'-- Check if Sheet Exists --
-Private Function SheetExists(sheetName As String) As Boolean
-    Dim ws As Worksheet
+Private Function GetLblMadrasa() As String
     On Error Resume Next
-    Set ws = ThisWorkbook.Sheets(sheetName)
-    SheetExists = Not ws Is Nothing
+    GetLblMadrasa = Trim(ThisWorkbook.Sheets("VBA_Helper").Range("I2").Value)
+    If GetLblMadrasa = "" Then GetLblMadrasa = "মাদরাসা"
     On Error GoTo 0
 End Function
 
-'-- Get Last Row in Column --
-Private Function GetLastRow(ws As Worksheet, columnNum As Long) As Long
-    Dim lastRow As Long
+Private Function GetLblCode() As String
     On Error Resume Next
-    lastRow = ws.Cells(ws.Rows.Count, columnNum).End(xlUp).Row
-    On Error GoTo 0
-    
-    If lastRow = 0 Then
-        lastRow = 1
-    End If
-    
-    GetLastRow = lastRow
-End Function
-
-'-- Safe Get Cell Value --
-Private Function SafeGetValue(cell As Range) As String
-    On Error Resume Next
-    SafeGetValue = CStr(cell.Value)
-    If Err.Number <> 0 Then
-        SafeGetValue = ""
-    End If
+    GetLblCode = Trim(ThisWorkbook.Sheets("VBA_Helper").Range("I3").Value)
+    If GetLblCode = "" Then GetLblCode = "কোড"
     On Error GoTo 0
 End Function
 
-'-- Save Workbook with Error Handling --
-Private Function SaveWorkbook(wb As Workbook, filePath As String) As Boolean
-    On Error GoTo ErrorHandler
-    wb.SaveAs filePath, xlOpenXMLWorkbook
-    SaveWorkbook = True
-    Exit Function
-    
-ErrorHandler:
-    MsgBox "Error saving file: " & filePath & vbCrLf & Err.Description, vbExclamation
-    SaveWorkbook = False
+Private Function GetLblVillage() As String
+    On Error Resume Next
+    GetLblVillage = Trim(ThisWorkbook.Sheets("VBA_Helper").Range("I4").Value)
+    If GetLblVillage = "" Then GetLblVillage = "গ্রাম"
+    On Error GoTo 0
 End Function
 
-'-- Open Folder (Cross-platform compatible) --
-Private Function OpenFolder(folderPath As String) As Boolean
-    On Error GoTo ErrorHandler
-    
-    #If Win64 Or Win32 Then
-        Shell "explorer.exe " & folderPath, vbNormalFocus
-    #ElseIf Mac Then
-        Shell "open """ & folderPath & """"
-    #End If
-    
-    OpenFolder = True
-    Exit Function
-    
-ErrorHandler:
-    OpenFolder = False
+Private Function GetLblUnion() As String
+    On Error Resume Next
+    GetLblUnion = Trim(ThisWorkbook.Sheets("VBA_Helper").Range("I5").Value)
+    If GetLblUnion = "" Then GetLblUnion = "ইউনিয়ন"
+    On Error GoTo 0
+End Function
+
+Private Function GetLblThana() As String
+    On Error Resume Next
+    GetLblThana = Trim(ThisWorkbook.Sheets("VBA_Helper").Range("I6").Value)
+    If GetLblThana = "" Then GetLblThana = "থানা"
+    On Error GoTo 0
+End Function
+
+Private Function GetLblDistrict() As String
+    On Error Resume Next
+    GetLblDistrict = Trim(ThisWorkbook.Sheets("VBA_Helper").Range("I7").Value)
+    If GetLblDistrict = "" Then GetLblDistrict = "জেলা"
+    On Error GoTo 0
+End Function
+
+Private Function GetLblPhone() As String
+    On Error Resume Next
+    GetLblPhone = Trim(ThisWorkbook.Sheets("VBA_Helper").Range("I8").Value)
+    If GetLblPhone = "" Then GetLblPhone = "ফোন"
+    On Error GoTo 0
+End Function
+
+Private Function GetLblFee() As String
+    On Error Resume Next
+    GetLblFee = Trim(ThisWorkbook.Sheets("VBA_Helper").Range("I9").Value)
+    If GetLblFee = "" Then GetLblFee = "বেতন"
+    On Error GoTo 0
+End Function
+
+Private Function GetLblRegNo() As String
+    On Error Resume Next
+    GetLblRegNo = Trim(ThisWorkbook.Sheets("VBA_Helper").Range("I10").Value)
+    If GetLblRegNo = "" Then GetLblRegNo = "রেজ নং"
+    On Error GoTo 0
+End Function
+
+Private Function GetLblDOB() As String
+    On Error Resume Next
+    GetLblDOB = Trim(ThisWorkbook.Sheets("VBA_Helper").Range("I11").Value)
+    If GetLblDOB = "" Then GetLblDOB = "জন্ম"
+    On Error GoTo 0
+End Function
+
+Private Function GetLblPostOffice() As String
+    On Error Resume Next
+    GetLblPostOffice = Trim(ThisWorkbook.Sheets("VBA_Helper").Range("I12").Value)
+    If GetLblPostOffice = "" Then GetLblPostOffice = "ডাকঘর"
+    On Error GoTo 0
+End Function
+
+Private Function GetLblSignature() As String
+    On Error Resume Next
+    GetLblSignature = Trim(ThisWorkbook.Sheets("VBA_Helper").Range("I13").Value)
+    If GetLblSignature = "" Then GetLblSignature = "স্বাক্ষর"
+    On Error GoTo 0
+End Function
+
+Private Function GetLblCollector() As String
+    On Error Resume Next
+    GetLblCollector = Trim(ThisWorkbook.Sheets("VBA_Helper").Range("I14").Value)
+    If GetLblCollector = "" Then GetLblCollector = "সংগ্রহকারী"
+    On Error GoTo 0
+End Function
+
+Private Function GetEngYear() As String
+    On Error Resume Next
+    GetEngYear = Trim(ThisWorkbook.Sheets("VBA_Helper").Range("I18").Value)
+    If GetEngYear = "" Then GetEngYear = "ইং"
+    On Error GoTo 0
+End Function
+
+Private Function GetBanYear() As String
+    On Error Resume Next
+    GetBanYear = Trim(ThisWorkbook.Sheets("VBA_Helper").Range("I19").Value)
+    If GetBanYear = "" Then GetBanYear = "বাং"
+    On Error GoTo 0
+End Function
+
+Private Function GetHijYear() As String
+    On Error Resume Next
+    GetHijYear = Trim(ThisWorkbook.Sheets("VBA_Helper").Range("I20").Value)
+    If GetHijYear = "" Then GetHijYear = "হিজ"
+    On Error GoTo 0
+End Function
+
+Private Function GetFeeUnit() As String
+    On Error Resume Next
+    GetFeeUnit = Trim(ThisWorkbook.Sheets("VBA_Helper").Range("I21").Value)
+    If GetFeeUnit = "" Then GetFeeUnit = "টাকা"
+    On Error GoTo 0
 End Function
 
 '--------------------------------------------
@@ -630,18 +522,10 @@ End Function
 Public Sub Btn_BlankRegistration()
 
     Dim wsMadrasa As Worksheet
-    
-    On Error GoTo ErrorHandler
-    
-    If Not SheetExists("Madrasa_List") Then
-        MsgBox "Sheet 'Madrasa_List' not found!", vbCritical, "Error"
-        Exit Sub
-    End If
-
     Set wsMadrasa = ThisWorkbook.Sheets("Madrasa_List")
 
     Dim madrasaCount As Long
-    madrasaCount = GetLastRow(wsMadrasa, 1) - 1
+    madrasaCount = wsMadrasa.Cells(Rows.Count, 1).End(xlUp).Row - 1
 
     If madrasaCount <= 0 Then
         MsgBox "No madrasa found in Madrasa_List!", _
@@ -658,8 +542,6 @@ Public Sub Btn_BlankRegistration()
     If response = vbYes Then
         Call Generate_BlankRegistration
     End If
-    
-    Exit Sub
-ErrorHandler:
-    MsgBox "Error: " & Err.Description, vbCritical, "Error"
+
 End Sub
+
