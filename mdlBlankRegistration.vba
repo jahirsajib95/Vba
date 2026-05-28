@@ -168,53 +168,55 @@ Private Sub DesignRegSheet( _
         ' Entire Sheet: Kalpurush, Middle Align
         '========================================
         .Cells.Font.Name = "Kalpurush"
-        .Cells.Font.Size = 12
+        .Cells.Font.Size = 11
         .Cells.VerticalAlignment = xlCenter
 
         '-- Column Width --
-        .Columns("A").ColumnWidth = 4
-        .Columns("B").ColumnWidth = 14
-        .Columns("C").ColumnWidth = 12
-        .Columns("D").ColumnWidth = 12
-        .Columns("E").ColumnWidth = 12
-        .Columns("F").ColumnWidth = 12
-        .Columns("G").ColumnWidth = 10
-        .Columns("H").ColumnWidth = 10
-        .Columns("I").ColumnWidth = 10
-        .Columns("J").ColumnWidth = 10
-        .Columns("K").ColumnWidth = 10
-        .Columns("L").ColumnWidth = 6
-        .Columns("M").ColumnWidth = 12
+        .Columns("A").ColumnWidth = 3.5
+        .Columns("B").ColumnWidth = 12
+        .Columns("C").ColumnWidth = 10
+        .Columns("D").ColumnWidth = 10
+        .Columns("E").ColumnWidth = 10
+        .Columns("F").ColumnWidth = 10
+        .Columns("G").ColumnWidth = 8
+        .Columns("H").ColumnWidth = 8
+        .Columns("I").ColumnWidth = 8
+        .Columns("J").ColumnWidth = 8
+        .Columns("K").ColumnWidth = 8
+        .Columns("L").ColumnWidth = 5
+        .Columns("M").ColumnWidth = 10
 
         '----------------------------
         ' Row 1-3: Main Header (NO COLOR)
         '----------------------------
         .Range("A1:M1").Merge
         .Range("A1").Value = boardName
-        .Range("A1").Font.Size = 18
+        .Range("A1").Font.Size = 14
         .Range("A1").Font.Bold = True
         .Range("A1").HorizontalAlignment = xlCenter
-        .Rows(1).RowHeight = 30
+        .Rows(1).RowHeight = 20
 
         .Range("A2:M2").Merge
         .Range("A2").Value = examName & " " & _
             examYearEng & " " & GetEngYear() & "/" & _
             examYearBan & " " & GetBanYear() & "/" & _
             examYearHij & " " & GetHijYear()
-        .Range("A2").Font.Size = 14
+        .Range("A2").Font.Size = 11
         .Range("A2").Font.Bold = True
         .Range("A2").HorizontalAlignment = xlCenter
-        .Rows(2).RowHeight = 26
+        .Rows(2).RowHeight = 18
 
         .Range("A3:M3").Merge
         .Range("A3").Value = txtRegForm()
-        .Range("A3").Font.Size = 15
+        .Range("A3").Font.Size = 12
         .Range("A3").Font.Bold = True
         .Range("A3").HorizontalAlignment = xlCenter
-        .Rows(3).RowHeight = 26
+        .Rows(3).RowHeight = 18
 
-        '-- Row 1-3 Border --
-      '  .Range("A1:M3").Borders.LineStyle = xlContinuous
+        '----------------------------
+        ' Row 4: Empty Space
+        '----------------------------
+        .Rows(4).RowHeight = 3
 
         '----------------------------
         ' Row 5: Madrasa Name (Full Row)
@@ -223,53 +225,62 @@ Private Sub DesignRegSheet( _
         .Range("A5").Value = GetLblMadrasa() & " " & mName & _
             "  |  " & GetLblCode() & " " & mCode
         .Range("A5").Font.Bold = True
-        .Range("A5").Font.Size = 14
+        .Range("A5").Font.Size = 11
         .Range("A5").HorizontalAlignment = xlCenter
         .Range("A5").WrapText = True
-        .Rows(5).RowHeight = 30
+        .Rows(5).RowHeight = 20
 
         '----------------------------
         ' Row 6: Village, Union, Thana, District
         '----------------------------
         .Cells(6, 1).Value = GetLblVillage()
         .Cells(6, 1).Font.Bold = True
+        .Cells(6, 1).Font.Size = 9
         .Cells(6, 1).HorizontalAlignment = xlCenter
 
         .Range("B6:C6").Merge
         .Range("B6").Value = mVillage
         .Range("B6").HorizontalAlignment = xlCenter
+        .Range("B6").Font.Size = 10
 
         .Cells(6, 4).Value = GetLblUnion()
         .Cells(6, 4).Font.Bold = True
+        .Cells(6, 4).Font.Size = 9
         .Cells(6, 4).HorizontalAlignment = xlCenter
 
         .Range("E6:F6").Merge
         .Range("E6").Value = mUnion
         .Range("E6").HorizontalAlignment = xlCenter
+        .Range("E6").Font.Size = 10
 
         .Cells(6, 7).Value = GetLblThana()
         .Cells(6, 7).Font.Bold = True
+        .Cells(6, 7).Font.Size = 9
         .Cells(6, 7).HorizontalAlignment = xlCenter
 
         .Range("H6:I6").Merge
         .Range("H6").Value = mThana
         .Range("H6").HorizontalAlignment = xlCenter
+        .Range("H6").Font.Size = 10
 
         .Cells(6, 10).Value = GetLblDistrict()
         .Cells(6, 10).Font.Bold = True
+        .Cells(6, 10).Font.Size = 9
         .Cells(6, 10).HorizontalAlignment = xlCenter
 
         .Range("K6:M6").Merge
         .Range("K6").Value = mDistrict
         .Range("K6").HorizontalAlignment = xlCenter
+        .Range("K6").Font.Size = 10
 
-        .Rows(6).RowHeight = 22
+        .Rows(6).RowHeight = 16
 
         '----------------------------
         ' Row 7: Jamat, Zone, Phone, Fee
         '----------------------------
         .Cells(7, 1).Value = hdrJamat()
         .Cells(7, 1).Font.Bold = True
+        .Cells(7, 1).Font.Size = 9
         .Cells(7, 1).HorizontalAlignment = xlCenter
 
         '-- Jamat Box (Empty) --
@@ -280,71 +291,100 @@ Private Sub DesignRegSheet( _
 
         .Cells(7, 4).Value = hdrZone()
         .Cells(7, 4).Font.Bold = True
+        .Cells(7, 4).Font.Size = 9
         .Cells(7, 4).HorizontalAlignment = xlCenter
 
         .Range("E7:F7").Merge
         .Range("E7").Value = mZone
         .Range("E7").HorizontalAlignment = xlCenter
+        .Range("E7").Font.Size = 10
 
         .Cells(7, 7).Value = GetLblPhone()
         .Cells(7, 7).Font.Bold = True
+        .Cells(7, 7).Font.Size = 9
         .Cells(7, 7).HorizontalAlignment = xlCenter
 
         .Range("H7:I7").Merge
         .Range("H7").Value = mPhone
         .Range("H7").HorizontalAlignment = xlCenter
+        .Range("H7").Font.Size = 10
 
         .Cells(7, 10).Value = GetLblFee()
         .Cells(7, 10).Font.Bold = True
+        .Cells(7, 10).Font.Size = 9
         .Cells(7, 10).HorizontalAlignment = xlCenter
 
         .Range("K7:M7").Merge
         .Range("K7").Value = examFee
         .Range("K7").HorizontalAlignment = xlCenter
+        .Range("K7").Font.Size = 10
 
-        .Rows(7).RowHeight = 22
+        .Rows(7).RowHeight = 16
 
         '-- Row 5:7 Border --
         .Range("A5:M7").Borders.LineStyle = xlContinuous
 
         '----------------------------
+        ' Row 8: Empty Space
+        '----------------------------
+        .Rows(8).RowHeight = 2
+
+        '----------------------------
         ' Row 9: Table Header (NO COLOR)
         '----------------------------
         .Cells(9, 1).Value = hdrSerial()
+        .Cells(9, 1).Font.Size = 9
+
         .Cells(9, 2).Value = GetLblRegNo()
+        .Cells(9, 2).Font.Size = 9
 
         .Range("C9:D9").Merge
         .Range("C9").Value = hdrName()
+        .Range("C9").Font.Size = 9
 
         .Range("E9:F9").Merge
         .Range("E9").Value = hdrFather()
+        .Range("E9").Font.Size = 9
 
         .Cells(9, 7).Value = GetLblDOB()
+        .Cells(9, 7).Font.Size = 8
+
         .Cells(9, 8).Value = GetLblVillage()
+        .Cells(9, 8).Font.Size = 8
+
         .Cells(9, 9).Value = GetLblPostOffice()
+        .Cells(9, 9).Font.Size = 8
+
         .Cells(9, 10).Value = GetLblThana()
+        .Cells(9, 10).Font.Size = 8
+
         .Cells(9, 11).Value = GetLblDistrict()
+        .Cells(9, 11).Font.Size = 8
+
         .Cells(9, 12).Value = GetLblFee()
+        .Cells(9, 12).Font.Size = 8
+
         .Cells(9, 13).Value = GetLblSignature()
+        .Cells(9, 13).Font.Size = 8
 
         '-- Header Format (Bold, Center, Border ONLY) --
         .Range("A9:M9").Font.Bold = True
-        .Range("A9:M9").Font.Size = 12
         .Range("A9:M9").HorizontalAlignment = xlCenter
         .Range("A9:M9").VerticalAlignment = xlCenter
         .Range("A9:M9").WrapText = True
         .Range("A9:M9").Borders.LineStyle = xlContinuous
-        .Rows(9).RowHeight = 50
+        .Rows(9).RowHeight = 25
 
         '----------------------------
         ' Row 10-19: Empty Table (10 rows)
-        ' NO COLOR, Height 28
+        ' NO COLOR, Height Reduced
         '----------------------------
         Dim r As Integer
         For r = 10 To 19
 
             .Cells(r, 1).Value = r - 9  ' Serial
             .Cells(r, 1).HorizontalAlignment = xlCenter
+            .Cells(r, 1).Font.Size = 10
 
             '-- Name Merge --
             .Range(.Cells(r, 3), .Cells(r, 4)).Merge
@@ -355,38 +395,44 @@ Private Sub DesignRegSheet( _
             .Range(.Cells(r, 1), .Cells(r, 13)) _
                 .Borders.LineStyle = xlContinuous
 
-            '-- Row Height 28 --
-            .Rows(r).RowHeight = 28
+            '-- Row Height Reduced to 20 --
+            .Rows(r).RowHeight = 20
 
         Next r
 
         '----------------------------
         ' Row 20: Footer - Only Collector Signature
-        ' Tight with row 19, Right side
         '----------------------------
-        Dim footerRow As Long
-        footerRow = 20  ' Right after last student
-
-        .Cells(footerRow, 13).Value = GetLblCollector()
-        .Cells(footerRow, 13).Font.Bold = True
-        .Cells(footerRow, 13).HorizontalAlignment = xlRight
-        .Cells(footerRow, 13).VerticalAlignment = xlCenter
+        .Cells(20, 13).Value = GetLblCollector()
+        .Cells(20, 13).Font.Bold = True
+        .Cells(20, 13).Font.Size = 8
+        .Cells(20, 13).HorizontalAlignment = xlRight
+        .Cells(20, 13).VerticalAlignment = xlCenter
+        .Rows(20).RowHeight = 15
 
         '----------------------------
-        ' Print Setup
+        ' Print Setup - সব কিছু এক পেইজে
         '----------------------------
         With .PageSetup
             .Orientation = xlLandscape
             .PaperSize = xlPaperA4
             .FitToPagesWide = 1
-            .FitToPagesTall = False
+            .FitToPagesTall = 1  '← এক পেইজে ফিট করবে
             .PrintTitleRows = "$1:$9"
-            .TopMargin = Application.InchesToPoints(0.5)
-            .BottomMargin = Application.InchesToPoints(0.5)
-            .LeftMargin = Application.InchesToPoints(0.5)
-            .RightMargin = Application.InchesToPoints(0.5)
+            .TopMargin = Application.InchesToPoints(0.3)
+            .BottomMargin = Application.InchesToPoints(0.3)
+            .LeftMargin = Application.InchesToPoints(0.3)
+            .RightMargin = Application.InchesToPoints(0.3)
+            .HeaderMargin = Application.InchesToPoints(0.2)
+            .FooterMargin = Application.InchesToPoints(0.2)
             .CenterHorizontally = True
+            .CenterVertically = False
+            .PrintHeadings = False
+            .PrintGridlines = False
         End With
+
+        '-- Set Print Area --
+        .PageSetup.PrintArea = "$A$1:$M$20"
 
     End With
 
