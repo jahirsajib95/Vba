@@ -3,28 +3,37 @@ Option Explicit
 '--------------------------------------------
 ' mdlBlankMarkSheet Module
 ' Improved - No Color, 10 Students Per Page
+' FIXED VERSION - Dynamic Subject Count Support
 '--------------------------------------------
+
+'-- Column Constants (To avoid hard-coding) --
+Const STUDENT_CODE_COL = 11        ' K Column
+Const STUDENT_JAMAT_COL = 14       ' N Column
+Const STUDENT_GROUP_COL = 15       ' O Column
+Const STUDENTS_PER_PAGE = 10
+Const DATA_START_ROW = 10
 
 Public Sub Generate_BlankMarkSheets()
 
     '-- Performance ON --
     Call PerfOn
 
-    '-- Sheets --
+    '-- Sheets with Error Checking --
     Dim wsStudent  As Worksheet
     Dim wsMadrasa  As Worksheet
     Dim wsSubject  As Worksheet
     Dim wsSettings As Worksheet
 
+    On Error GoTo ErrorHandler
     Set wsStudent = ThisWorkbook.Sheets("Student_Database")
     Set wsMadrasa = ThisWorkbook.Sheets("Madrasa_List")
     Set wsSubject = ThisWorkbook.Sheets("Subject_Structure")
     Set wsSettings = ThisWorkbook.Sheets("Settings")
+    On Error GoTo 0
 
     '-- Check if Students Exist --
     Dim totalStudents As Long
-    totalStudents = Application.CountA( _
-        wsStudent.Range("D2:D5000"))
+    totalStudents = Application.CountA(wsStudent.Range("D2:D5000"))
 
     If totalStudents = 0 Then
         MsgBox "No students found in Student_Database!", _
@@ -77,10 +86,9 @@ Public Sub Generate_BlankMarkSheets()
 
         If mCode = "" Or mName = "" Then GoTo NextMadrasa
 
-        '-- Check if Madrasa has Students --
+        '-- Check if Madrasa has Students (Use defined range) --
         Dim stuCount As Long
-        stuCount = Application.CountIf( _
-            wsStudent.Range("K:K"), mCode)
+        stuCount = Application.CountIf(wsStudent.Range("K2:K5000"), mCode)
 
         If stuCount = 0 Then GoTo NextMadrasa
 
@@ -108,9 +116,9 @@ Public Sub Generate_BlankMarkSheets()
 
                     Dim grpCount As Long
                     grpCount = Application.CountIfs( _
-                        wsStudent.Range("K:K"), mCode, _
-                        wsStudent.Range("N:N"), jamats(j), _
-                        wsStudent.Range("O:O"), groups(g))
+                        wsStudent.Range("K2:K5000"), mCode, _
+                        wsStudent.Range("N2:N5000"), jamats(j), _
+                        wsStudent.Range("O2:O5000"), groups(g))
 
                     If grpCount > 0 Then
                         Call CreateBlankSheet( _
@@ -129,8 +137,8 @@ Public Sub Generate_BlankMarkSheets()
 
                 Dim jamatCount As Long
                 jamatCount = Application.CountIfs( _
-                    wsStudent.Range("K:K"), mCode, _
-                    wsStudent.Range("N:N"), jamats(j))
+                    wsStudent.Range("K2:K5000"), mCode, _
+                    wsStudent.Range("N2:N5000"), jamats(j))
 
                 If jamatCount > 0 Then
                     Call CreateBlankSheet( _
@@ -147,19 +155,32 @@ Public Sub Generate_BlankMarkSheets()
 
         Next j
 
-        '-- Delete Extra Sheet --
-        If sheetAdded And newWB.Sheets.count > 1 Then
+        '-- Delete Extra Sheet if no data was added --
+        If Not sheetAdded And newWB.Sheets.count >= 1 Then
+            Application.DisplayAlerts = False
+            newWB.Sheets(1).Delete
+            Application.DisplayAlerts = True
+        ElseIf sheetAdded And newWB.Sheets.count > 1 Then
             Application.DisplayAlerts = False
             newWB.Sheets(newWB.Sheets.count).Delete
             Application.DisplayAlerts = True
         End If
 
-        '-- Save File --
-        If sheetAdded Then
+        '-- Save File only if sheets exist --
+        If sheetAdded And newWB.Sheets.count > 0 Then
             Dim savePath As String
             savePath = folderPath & mCode & "_" & _
                        CleanFileName(mName) & "_Blank.xlsx"
+            
+            On Error Resume Next
             newWB.SaveAs savePath, xlOpenXMLWorkbook
+            If Err.Number <> 0 Then
+                MsgBox "Error saving file: " & savePath & vbCrLf & Err.Description, _
+                       vbExclamation, "Save Error"
+                Err.Clear
+            End If
+            On Error GoTo 0
+            
             successCount = successCount + 1
         End If
 
@@ -177,10 +198,15 @@ NextMadrasa:
            "Total: " & successCount & " files created.", _
            vbInformation, "Complete"
 
+    Exit Sub
+ErrorHandler:
+    MsgBox "Error in Generate_BlankMarkSheets: " & Err.Description, _
+           vbCritical, "Error"
+    Call PerfOff
 End Sub
 
 '--------------------------------------------
-' Create One Blank Sheet
+' Create One Blank Sheet (DYNAMIC SUBJECTS)
 '--------------------------------------------
 Private Sub CreateBlankSheet( _
     newWB As Workbook, _
@@ -197,6 +223,8 @@ Private Sub CreateBlankSheet( _
     examYearBan As String, _
     examYearHij As String, _
     sheetAdded As Boolean)
+
+    On Error GoTo ErrorHandler
 
     '-- New Sheet --
     Dim wsBlank As Worksheet
@@ -215,29 +243,35 @@ Private Sub CreateBlankSheet( _
         wsBlank.Name = jamat & "_" & grp
     End If
 
-    '-- Get Subject Info --
+    '-- Get Subject Info (Dynamic Count) --
     Dim subInfo(1 To 5, 1 To 2) As Variant
     Call GetSubjectInfoBlank(wsSubject, jamat, subInfo)
 
+    '-- Proper Error Handling for VLookup --
     Dim totalFull As Variant
     Dim subCount  As Variant
-    totalFull = Application.VLookup( _
-        jamat, wsSubject.Range("A:M"), 12, 0)
-    subCount = Application.VLookup( _
-        jamat, wsSubject.Range("A:M"), 13, 0)
+    
+    On Error Resume Next
+    totalFull = Application.VLookup(jamat, wsSubject.Range("A:M"), 12, 0)
+    subCount = Application.VLookup(jamat, wsSubject.Range("A:M"), 13, 0)
+    On Error GoTo 0
 
     If IsError(totalFull) Then totalFull = 0
     If IsError(subCount) Then subCount = 0
 
-    '-- Count actual subjects --
+    '-- Count ACTUAL subjects (এটাই গুরুত্বপূর্ণ) --
     Dim actualSubCount As Integer
     actualSubCount = 0
     Dim sc As Integer
+    
     For sc = 1 To 5
-        If subInfo(sc, 1) <> "" Then
+        If Len(Trim(CStr(subInfo(sc, 1)))) > 0 Then
             actualSubCount = actualSubCount + 1
         End If
     Next sc
+
+    '-- যদি কোনো subject না পায়, তাহলে exit করো --
+    If actualSubCount = 0 Then Exit Sub
 
     If subCount = 0 Then subCount = actualSubCount
 
@@ -257,9 +291,9 @@ Private Sub CreateBlankSheet( _
         Dim sJamat As String
         Dim sGrp   As String
 
-        sCode = wsStudent.Cells(s, 11).Value
-        sJamat = wsStudent.Cells(s, 14).Value
-        sGrp = wsStudent.Cells(s, 15).Value
+        sCode = wsStudent.Cells(s, STUDENT_CODE_COL).Value
+        sJamat = wsStudent.Cells(s, STUDENT_JAMAT_COL).Value
+        sGrp = wsStudent.Cells(s, STUDENT_GROUP_COL).Value
 
         Dim isMatch As Boolean
         isMatch = (sCode = mCode) And (sJamat = jamat)
@@ -276,10 +310,6 @@ Private Sub CreateBlankSheet( _
 
     If stuTotal = 0 Then Exit Sub
     ReDim Preserve stuRows(1 To stuTotal)
-
-    '-- Constants --
-    Const STUDENTS_PER_PAGE As Integer = 10
-    Const DATA_START_ROW As Integer = 10
 
     With wsBlank
 
@@ -305,22 +335,21 @@ Private Sub CreateBlankSheet( _
         .Columns("L").ColumnWidth = 8
         .Columns("M").ColumnWidth = 12
 
-        '-- Calculate dynamic columns first --
-        Dim si       As Integer
-        Dim startCol As Integer
+        '========================================
+        ' FIXED: Dynamic Column Calculation
+        ' Column Mapping:
+        ' A=1, B=2, C=3, D-F=4-6 (merged), G=7
+        ' G থেকে subjects শুরু, তারপর Total, তারপর Remarks
+        '========================================
+        
+        Dim subjectColStart As Integer
         Dim totalCol As Integer
         Dim remarksCol As Integer
         Dim lastCol  As Integer
 
-        startCol = 7
-        For si = 1 To 5
-            If subInfo(si, 1) <> "" Then
-                startCol = startCol + 1
-            End If
-        Next si
-
-        totalCol = startCol
-        remarksCol = startCol + 1
+        subjectColStart = 7  '-- G Column থেকে subjects শুরু
+        totalCol = subjectColStart + actualSubCount  '-- Subjects এর পরে Total
+        remarksCol = totalCol + 1  '-- Total এর পরে Remarks
         lastCol = remarksCol
 
         '----------------------------
@@ -364,7 +393,7 @@ Private Sub CreateBlankSheet( _
         .Rows(5).RowHeight = 30
 
         '========================================
-        ' FIX 2: Row 6 & 7 = Center + Middle
+        ' Row 6 & 7: Info Section
         '========================================
 
         '-- Row 6: Code, Zone, Exam Year --
@@ -428,7 +457,7 @@ Private Sub CreateBlankSheet( _
         .Range("A5:M7").Borders.LineStyle = xlContinuous
 
         '========================================
-        ' FIX 3: Row 9 Header = Height 50
+        ' Row 9: Column Headers (DYNAMIC)
         '========================================
         .Cells(9, 1).Value = hdrSerial()
         .Cells(9, 2).Value = hdrRoll()
@@ -437,17 +466,17 @@ Private Sub CreateBlankSheet( _
         .Range("D9:F9").Merge
         .Range("D9").Value = hdrName()
 
-        '-- Subject Headers --
+        '-- Subject Headers (Dynamically placed) --
         Dim colIdx As Integer
-        colIdx = 7
+        colIdx = subjectColStart
 
-        For si = 1 To 5
-            If subInfo(si, 1) <> "" Then
-                .Cells(9, colIdx).Value = subInfo(si, 1) & _
-                    vbCrLf & "(" & subInfo(si, 2) & ")"
+        For sc = 1 To 5
+            If Len(Trim(CStr(subInfo(sc, 1)))) > 0 Then
+                .Cells(9, colIdx).Value = subInfo(sc, 1) & _
+                    vbCrLf & "(" & subInfo(sc, 2) & ")"
                 colIdx = colIdx + 1
             End If
-        Next si
+        Next sc
 
         '-- Total Column --
         .Cells(9, totalCol).Value = hdrTotal() & _
@@ -476,6 +505,8 @@ Private Sub CreateBlankSheet( _
         Dim currentRow As Long
         Dim serial     As Long
         Dim stuOnPage  As Integer
+        Dim fRow As Long
+        Dim lfRow As Long
 
         currentRow = DATA_START_ROW
         serial = 1
@@ -506,9 +537,9 @@ Private Sub CreateBlankSheet( _
             .Cells(currentRow, 4).Value = _
                 wsStudent.Cells(stuRow, 4).Value
 
-            '-- Subject Mark Boxes (Empty) --
+            '-- Subject Mark Boxes (Empty) - Based on ACTUAL subject count --
             Dim markCol As Integer
-            For markCol = 7 To (7 + actualSubCount - 1)
+            For markCol = subjectColStart To (subjectColStart + actualSubCount - 1)
                 .Cells(currentRow, markCol).Value = ""
                 .Cells(currentRow, markCol).HorizontalAlignment = xlCenter
             Next markCol
@@ -525,25 +556,16 @@ Private Sub CreateBlankSheet( _
                    .Cells(currentRow, lastCol)) _
                 .Borders.LineStyle = xlContinuous
 
-            '========================================
-            ' FIX 4: Student Row Height = 26
-            '========================================
             .Rows(currentRow).RowHeight = 26
 
             serial = serial + 1
             currentRow = currentRow + 1
             stuOnPage = stuOnPage + 1
 
-            '========================================
-            ' 10 students done = footer + page break
-            '========================================
+            '-- 10 students done = footer + page break --
             If stuOnPage = STUDENTS_PER_PAGE Then
 
-                '========================================
-                ' FIX 5: ONLY Head Examiner - tight
-                '========================================
-                Dim fRow As Long
-                fRow = currentRow  ' No gap
+                fRow = currentRow
 
                 .Cells(fRow, remarksCol).Value = lblHeadExaminer()
                 .Cells(fRow, remarksCol).Font.Bold = True
@@ -563,19 +585,14 @@ Private Sub CreateBlankSheet( _
 
         Next idx
 
-        '========================================
-        ' Last page footer (if < 10 students)
-        '========================================
+        '-- Last page footer (if < 10 students) --
         If stuOnPage > 0 And stuOnPage < STUDENTS_PER_PAGE Then
+            lfRow = currentRow
 
-        Dim lfRow As Long
-        lfRow = currentRow  ' No gap - tight
-
-        .Cells(lfRow, remarksCol).Value = lblHeadExaminer()
-        .Cells(lfRow, remarksCol).Font.Bold = True
-        .Cells(lfRow, remarksCol).HorizontalAlignment = xlRight
-        .Cells(lfRow, remarksCol).VerticalAlignment = xlCenter
-
+            .Cells(lfRow, remarksCol).Value = lblHeadExaminer()
+            .Cells(lfRow, remarksCol).Font.Bold = True
+            .Cells(lfRow, remarksCol).HorizontalAlignment = xlRight
+            .Cells(lfRow, remarksCol).VerticalAlignment = xlCenter
         End If
 
         '----------------------------
@@ -596,16 +613,22 @@ Private Sub CreateBlankSheet( _
 
     End With
 
+    Exit Sub
+ErrorHandler:
+    MsgBox "Error in CreateBlankSheet for " & jamat & ": " & Err.Description, _
+           vbCritical, "Error"
 End Sub
 
 '--------------------------------------------
-' Get Subject Info
+' Get Subject Info (DYNAMIC)
 '--------------------------------------------
 Private Sub GetSubjectInfoBlank( _
     wsSubject As Worksheet, _
     jamat As String, _
     subInfo() As Variant)
 
+    On Error GoTo ErrorHandler
+    
     Dim si As Integer
     For si = 1 To 5
         Dim nameCol As Integer
@@ -616,10 +639,10 @@ Private Sub GetSubjectInfoBlank( _
         Dim subName As Variant
         Dim subFull As Variant
 
-        subName = Application.VLookup( _
-            jamat, wsSubject.Range("A:M"), nameCol, 0)
-        subFull = Application.VLookup( _
-            jamat, wsSubject.Range("A:M"), fullCol, 0)
+        On Error Resume Next
+        subName = Application.VLookup(jamat, wsSubject.Range("A:M"), nameCol, 0)
+        subFull = Application.VLookup(jamat, wsSubject.Range("A:M"), fullCol, 0)
+        On Error GoTo 0
 
         If IsError(subName) Or subName = "" Then
             subInfo(si, 1) = ""
@@ -630,6 +653,10 @@ Private Sub GetSubjectInfoBlank( _
         End If
     Next si
 
+    Exit Sub
+ErrorHandler:
+    MsgBox "Error in GetSubjectInfoBlank: " & Err.Description, _
+           vbCritical, "Error"
 End Sub
 
 '--------------------------------------------
@@ -675,11 +702,13 @@ End Function
 Public Sub Btn_BlankMarkSheet()
 
     Dim wsStudent As Worksheet
+    
+    On Error GoTo ErrorHandler
     Set wsStudent = ThisWorkbook.Sheets("Student_Database")
+    On Error GoTo 0
 
     Dim totalStudents As Long
-    totalStudents = Application.CountA( _
-        wsStudent.Range("D2:D5000"))
+    totalStudents = Application.CountA(wsStudent.Range("D2:D5000"))
 
     If totalStudents = 0 Then
         MsgBox "No students found in Student_Database!", _
@@ -698,5 +727,8 @@ Public Sub Btn_BlankMarkSheet()
         Call Generate_BlankMarkSheets
     End If
 
+    Exit Sub
+ErrorHandler:
+    MsgBox "Error in Btn_BlankMarkSheet: " & Err.Description, _
+           vbCritical, "Error"
 End Sub
-
