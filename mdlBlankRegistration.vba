@@ -14,6 +14,20 @@ Public Sub Generate_BlankRegistration()
     '-- Sheets --
     Dim wsMadrasa  As Worksheet
     Dim wsSettings As Worksheet
+    
+    On Error GoTo ErrorHandler
+
+    If Not SheetExists("Madrasa_List") Then
+        MsgBox "Sheet 'Madrasa_List' not found!", vbCritical, "Error"
+        Call PerfOff
+        Exit Sub
+    End If
+
+    If Not SheetExists("Settings") Then
+        MsgBox "Sheet 'Settings' not found!", vbCritical, "Error"
+        Call PerfOff
+        Exit Sub
+    End If
 
     Set wsMadrasa = ThisWorkbook.Sheets("Madrasa_List")
     Set wsSettings = ThisWorkbook.Sheets("Settings")
@@ -29,9 +43,9 @@ Public Sub Generate_BlankRegistration()
         Exit Sub
     End If
 
-    '-- Madrasa List --
+    '-- Madrasa List - Better lastRow detection --
     Dim lastRow As Long
-    lastRow = wsMadrasa.Cells(Rows.count, 1).End(xlUp).Row
+    lastRow = GetLastRow(wsMadrasa, 1)
 
     If lastRow < 2 Then
         MsgBox "No madrasa found in Madrasa_List!", _
@@ -48,12 +62,12 @@ Public Sub Generate_BlankRegistration()
     Dim examYearHij As String
     Dim examFee     As String
 
-    boardName = wsSettings.Range("B10").Value
-    examName = wsSettings.Range("B4").Value
-    examYearEng = wsSettings.Range("B5").Value
-    examYearBan = wsSettings.Range("B6").Value
-    examYearHij = wsSettings.Range("B7").Value
-    examFee = wsSettings.Range("B16").Value & " " & txtFeeUnit()
+    boardName = SafeGetValue(wsSettings.Range("B10"))
+    examName = SafeGetValue(wsSettings.Range("B4"))
+    examYearEng = SafeGetValue(wsSettings.Range("B5"))
+    examYearBan = SafeGetValue(wsSettings.Range("B6"))
+    examYearHij = SafeGetValue(wsSettings.Range("B7"))
+    examFee = SafeGetValue(wsSettings.Range("B16")) & " " & txtFeeUnit()
 
     '-- Loop Start --
     Dim i            As Long
@@ -72,14 +86,14 @@ Public Sub Generate_BlankRegistration()
         Dim mDistrict As String
         Dim mPhone    As String
 
-        mCode = Trim(wsMadrasa.Cells(i, 1).Value)
-        mName = Trim(wsMadrasa.Cells(i, 2).Value)
-        mZone = Trim(wsMadrasa.Cells(i, 3).Value)
-        mVillage = Trim(wsMadrasa.Cells(i, 4).Value)
-        mUnion = Trim(wsMadrasa.Cells(i, 5).Value)
-        mThana = Trim(wsMadrasa.Cells(i, 6).Value)
-        mDistrict = Trim(wsMadrasa.Cells(i, 7).Value)
-        mPhone = Trim(wsMadrasa.Cells(i, 8).Value)
+        mCode = Trim(SafeGetValue(wsMadrasa.Cells(i, 1)))
+        mName = Trim(SafeGetValue(wsMadrasa.Cells(i, 2)))
+        mZone = Trim(SafeGetValue(wsMadrasa.Cells(i, 3)))
+        mVillage = Trim(SafeGetValue(wsMadrasa.Cells(i, 4)))
+        mUnion = Trim(SafeGetValue(wsMadrasa.Cells(i, 5)))
+        mThana = Trim(SafeGetValue(wsMadrasa.Cells(i, 6)))
+        mDistrict = Trim(SafeGetValue(wsMadrasa.Cells(i, 7)))
+        mPhone = Trim(SafeGetValue(wsMadrasa.Cells(i, 8)))
 
         '-- Skip if Empty --
         If mCode = "" Or mName = "" Then GoTo NextMadrasa
@@ -91,7 +105,10 @@ Public Sub Generate_BlankRegistration()
         '-- Registration Sheet Design --
         Dim wsReg As Worksheet
         Set wsReg = newWB.Sheets(1)
+        
+        On Error Resume Next
         wsReg.Name = txtRegForm()
+        On Error GoTo ErrorHandler
 
         '-- Design the Sheet --
         Call DesignRegSheet( _
@@ -104,13 +121,16 @@ Public Sub Generate_BlankRegistration()
 
         '-- Save File --
         Dim savePath As String
-        savePath = folderPath & mCode & "_" & _
-                   CleanFileName(mName) & "_Registration.xlsx"
+        Dim cleanName As String
+        cleanName = CleanFileName(mName)
+        savePath = folderPath & mCode & "_" & cleanName & "_Registration.xlsx"
 
-        newWB.SaveAs savePath, xlOpenXMLWorkbook
+        '-- Save with error handling --
+        If SaveWorkbook(newWB, savePath) Then
+            successCount = successCount + 1
+        End If
+
         newWB.Close False
-
-        successCount = successCount + 1
 
 NextMadrasa:
     Next i
@@ -119,13 +139,19 @@ NextMadrasa:
     Call PerfOff
 
     '-- Open Folder --
-    Shell "explorer.exe " & folderPath, vbNormalFocus
+    If OpenFolder(folderPath) Then
+        ' Folder opened successfully
+    End If
 
     MsgBox txtRegForm() & " generation complete!" & vbCrLf & _
            "Total: " & successCount & " forms created." & vbCrLf & _
            "Location: " & folderPath, _
            vbInformation, "Complete"
 
+    Exit Sub
+ErrorHandler:
+    Call PerfOff
+    MsgBox "Error: " & Err.Description, vbCritical, "Error"
 End Sub
 
 '--------------------------------------------
@@ -445,6 +471,30 @@ Private Function lblBoardUse() As String
     lblBoardUse = ReadHelperI(17)
 End Function
 
+Private Function hdrSerial() As String
+    hdrSerial = ReadHelperI(22)
+End Function
+
+Private Function hdrName() As String
+    hdrName = ReadHelperI(23)
+End Function
+
+Private Function hdrFather() As String
+    hdrFather = ReadHelperI(24)
+End Function
+
+Private Function hdrJamat() As String
+    hdrJamat = ReadHelperI(25)
+End Function
+
+Private Function hdrZone() As String
+    hdrZone = ReadHelperI(26)
+End Function
+
+Private Function txtRegForm() As String
+    txtRegForm = ReadHelperI(27)
+End Function
+
 Private Function txtEngYear() As String
     txtEngYear = ReadHelperI(18)
 End Function
@@ -461,12 +511,117 @@ Private Function txtFeeUnit() As String
     txtFeeUnit = ReadHelperI(21)
 End Function
 
-'-- I Column Reader --
+'--------------------------------------------
+' Improved Helper Functions
+'--------------------------------------------
+
+'-- Safe Helper I Column Reader with Error Handling --
 Private Function ReadHelperI(Row As Integer) As String
+    Dim wsHelper As Worksheet
+    Dim result As String
+    
+    On Error GoTo ErrorHandler
+    
+    If Not SheetExists("VBA_Helper") Then
+        ReadHelperI = ""
+        Exit Function
+    End If
+    
+    Set wsHelper = ThisWorkbook.Sheets("VBA_Helper")
+    result = Trim(wsHelper.Range("I" & Row).Value)
+    
+    If result = "" Then
+        result = ""  ' Return empty string if value is empty
+    End If
+    
+    ReadHelperI = result
+    Exit Function
+    
+ErrorHandler:
+    ReadHelperI = ""
+End Function
+
+'-- Clean File Name (Remove invalid characters) --
+Private Function CleanFileName(fileName As String) As String
+    Dim invalidChars As String
+    Dim i As Integer
+    Dim result As String
+    
+    invalidChars = "<>:/\|?*" & Chr(34)
+    result = fileName
+    
+    For i = 1 To Len(invalidChars)
+        result = Replace(result, Mid(invalidChars, i, 1), "_")
+    Next i
+    
+    ' Limit length
+    If Len(result) > 50 Then
+        result = Left(result, 50)
+    End If
+    
+    CleanFileName = result
+End Function
+
+'-- Check if Sheet Exists --
+Private Function SheetExists(sheetName As String) As Boolean
+    Dim ws As Worksheet
     On Error Resume Next
-    ReadHelperI = Trim( _
-        ThisWorkbook.Sheets("VBA_Helper").Range("I" & Row).Value)
+    Set ws = ThisWorkbook.Sheets(sheetName)
+    SheetExists = Not ws Is Nothing
     On Error GoTo 0
+End Function
+
+'-- Get Last Row in Column --
+Private Function GetLastRow(ws As Worksheet, columnNum As Long) As Long
+    Dim lastRow As Long
+    On Error Resume Next
+    lastRow = ws.Cells(ws.Rows.Count, columnNum).End(xlUp).Row
+    On Error GoTo 0
+    
+    If lastRow = 0 Then
+        lastRow = 1
+    End If
+    
+    GetLastRow = lastRow
+End Function
+
+'-- Safe Get Cell Value --
+Private Function SafeGetValue(cell As Range) As String
+    On Error Resume Next
+    SafeGetValue = CStr(cell.Value)
+    If Err.Number <> 0 Then
+        SafeGetValue = ""
+    End If
+    On Error GoTo 0
+End Function
+
+'-- Save Workbook with Error Handling --
+Private Function SaveWorkbook(wb As Workbook, filePath As String) As Boolean
+    On Error GoTo ErrorHandler
+    wb.SaveAs filePath, xlOpenXMLWorkbook
+    SaveWorkbook = True
+    Exit Function
+    
+ErrorHandler:
+    MsgBox "Error saving file: " & filePath & vbCrLf & Err.Description, vbExclamation
+    SaveWorkbook = False
+End Function
+
+'-- Open Folder (Cross-platform compatible) --
+Private Function OpenFolder(folderPath As String) As Boolean
+    On Error GoTo ErrorHandler
+    
+    #If Win64 Or Win32 Then
+        Shell "explorer.exe " & folderPath, vbNormalFocus
+    #ElseIf Mac Then
+        Shell "open """ & folderPath & """"
+    #End If
+    
+    OpenFolder = True
+    Exit Function
+    
+ErrorHandler:
+    OpenFolder = False
 End Function
 
 '--------------------------------------------
@@ -475,11 +630,18 @@ End Function
 Public Sub Btn_BlankRegistration()
 
     Dim wsMadrasa As Worksheet
+    
+    On Error GoTo ErrorHandler
+    
+    If Not SheetExists("Madrasa_List") Then
+        MsgBox "Sheet 'Madrasa_List' not found!", vbCritical, "Error"
+        Exit Sub
+    End If
+
     Set wsMadrasa = ThisWorkbook.Sheets("Madrasa_List")
 
     Dim madrasaCount As Long
-    madrasaCount = Application.CountA( _
-        wsMadrasa.Range("A2:A200")) - 1
+    madrasaCount = GetLastRow(wsMadrasa, 1) - 1
 
     If madrasaCount <= 0 Then
         MsgBox "No madrasa found in Madrasa_List!", _
@@ -496,6 +658,8 @@ Public Sub Btn_BlankRegistration()
     If response = vbYes Then
         Call Generate_BlankRegistration
     End If
-
+    
+    Exit Sub
+ErrorHandler:
+    MsgBox "Error: " & Err.Description, vbCritical, "Error"
 End Sub
-
